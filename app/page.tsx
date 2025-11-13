@@ -1,65 +1,127 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useMemo, useRef, useState } from "react";
+import { uuid } from "./lib/uuid";
+
+type Message = { role: "user" | "assistant"; content: string };
+
+const PRODUCT_OPTIONS = [
+  { code: "AWS-S3", label: "AWS – Amazon S3 (Storage)" },
+  { code: "AWS-EC2", label: "AWS – Amazon EC2 (Compute)" },
+  { code: "GCP-CS", label: "GCP – Cloud Storage (Storage)" },
+  { code: "GCP-CE", label: "GCP – Compute Engine (Compute)" },
+  { code: "HUAWEI-OBS", label: "Huawei Cloud – OBS (Storage)" },
+  { code: "HUAWEI-ECS", label: "Huawei Cloud – ECS (Compute)" }
+];
+
+export default function HomePage() {
+  const [sessionId] = useState(uuid);
+  const [productCode, setProductCode] = useState(PRODUCT_OPTIONS[0].code);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  const placeholder = useMemo(
+    () => "Tanya apa saja tentang produk ini (contoh: \"Ini produk apa ya? cocok untuk apa?\")",
+    []
+  );
+
+  async function sendMessage() {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, message: text, productCode })
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "Maaf, terjadi kesalahan di server FE.\n" + t }
+        ]);
+      } else {
+        const data = await res.json();
+        const answer: string = data?.answer ?? data?.message ?? "(tidak ada jawaban)";
+        setMessages((prev) => [...prev, { role: "assistant", content: answer }]);
+      }
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Gagal menghubungi server: " + (err?.message ?? err) }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") sendMessage();
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="container">
+      <div className="card">
+        <div className="header">
+          <div>
+            <div className="title">AI Product Assistant</div>
+            <div className="badge">Demo Chatbot — Cache Augmented Generation</div>
+          </div>
+          <div className="row">
+            <span className="badge">Product Code:</span>
+            <select
+              className="select"
+              value={productCode}
+              onChange={(e) => setProductCode(e.target.value)}
+              disabled={loading}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              {PRODUCT_OPTIONS.map((o) => (
+                <option key={o.code} value={o.code}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div ref={chatRef} className="chat card" style={{ height: "58vh" }}>
+          {messages.map((m, i) => (
+            <div key={i} className={`msg ${m.role === "user" ? "me" : "bot"}`}>
+              {m.content}
+            </div>
+          ))}
+          {messages.length === 0 && (
+            <div className="badge">Mulai dengan memilih produk, lalu ajukan pertanyaan…</div>
+          )}
+          {loading && <div className="msg bot">Sedang menyusun jawaban…</div>}
         </div>
-      </main>
+
+        <div className="footer">
+          <input
+            className="input"
+            placeholder={placeholder}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            disabled={loading}
+            style={{ flex: 1 }}
+          />
+          <button className="button" onClick={sendMessage} disabled={loading}>
+            {loading ? "Mengirim…" : "Kirim"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
