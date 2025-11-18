@@ -118,3 +118,11 @@ body {
   font-weight: 700;
   font-size: 20px;
 }
+
+/* optional badge styling tweak */
+.header .badge {
+  background: #f1f5ff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+}
