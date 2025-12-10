@@ -1,135 +1,138 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { uuid } from "./lib/uuid";
+import { useEffect, useRef, useState } from "react";
+// Jika file uuid.ts belum ada, gunakan fungsi dummy di bawah ini:
+const generateSessionId = () => Math.random().toString(36).substring(2, 15);
 
-type Message = { role: "user" | "assistant"; content: string };
-type ApiResp =
-  | { answer: string; meta?: { product?: string; provider?: string; cacheHit?: boolean; similarity?: number } }
-  | { message: string; detail?: unknown };
+type Message = { 
+  role: "user" | "assistant"; 
+  content: string;
+  meta?: { source?: string; similarity?: number | null }
+};
 
 export default function HomePage() {
-  const [sessionId] = useState(uuid);
+  const [sessionId] = useState(generateSessionId);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [meta, setMeta] = useState<{ product?: string; provider?: string; cacheHit?: boolean; similarity?: number } | null>(null);
-
+  
   const chatRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
 
-  const placeholder = useMemo(
-    () => 'Tanya apa saja tentang produk cloud (contoh: "Apa itu GCP?", "Huawei Cloud itu apa?")',
-    []
-  );
+  // Auto-scroll ke bawah saat chat bertambah
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
+    }
+  }, [messages, loading]);
 
   async function sendMessage() {
     const text = input.trim();
     if (!text || loading) return;
 
+    // 1. Tampilkan pesan user
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setMessages(prev => [...prev, { role: "user", content: text }]);
     setLoading(true);
 
     try {
+      // 2. Kirim ke API Route
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message: text }) // ⬅ tanpa productCode
+        body: JSON.stringify({ 
+          sessionId, 
+          message: text,
+          productCode: "PROD-001" // Opsional: Hapus jika ingin mencari semua produk
+        })
       });
 
-      const raw = await res.text();
-      let data: ApiResp | null;
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        data = { answer: raw as unknown as string };
-      }
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.message || "Gagal menghubungi server");
 
-      if (!res.ok) {
-        const msg =
-          (data as any)?.message ||
-          "Maaf, terjadi kesalahan di server (n8n/FE). Coba lagi sebentar ya.";
-        setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
-        setLoading(false);
-        return;
-      }
+      // 3. Tampilkan balasan bot
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: data.answer,
+        meta: {
+          source: data.meta?.source,
+          similarity: data.meta?.similarity ? parseFloat(data.meta.similarity) : null
+        }
+      }]);
 
-      const answer =
-        (data as any)?.answer ??
-        (data as any)?.message ??
-        "Tidak ada jawaban dari n8n.";
-
-      setMessages((prev) => [...prev, { role: "assistant", content: String(answer) }]);
-      setMeta((data as any)?.meta ?? null);
     } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Gagal menghubungi server: " + (err?.message ?? err) }
-      ]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Maaf, terjadi kesalahan: " + err.message }]);
     } finally {
       setLoading(false);
     }
   }
 
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
   return (
-    <div className="container">
-      <div className="card">
-        <div className="header">
-          <div>
-            <div className="title">AI Product Assistant</div>
-            <div className="badge">Demo Chatbot — Cache Augmented Generation</div>
-          </div>
-          {meta && (meta.product || meta.provider) && (
-            <div className="row">
-              <span className="badge">
-                {meta.provider ? `${meta.provider}` : ""}
-                {meta.product ? ` – ${meta.product}` : ""}
-                {meta.cacheHit ? " (cache)" : ""}
-              </span>
-            </div>
-          )}
+    <div className="main-container">
+      <div className="chat-card">
+        
+        {/* HEADER */}
+        <div className="chat-header">
+          <h1>🤖 AI Support Center</h1>
+          <p>Tanya Jawab Produk & Layanan</p>
         </div>
 
-        <div ref={chatRef} className="chat card" style={{ height: "58vh" }}>
+        {/* CHAT AREA */}
+        <div className="chat-body" ref={chatRef}>
+          {messages.length === 0 && (
+            <div style={{textAlign: "center", color: "#888", marginTop: "50px"}}>
+              <p>Halo! Silakan tanya tentang produk kami.</p>
+              <small>Contoh: "Apa kelebihan Neo VPS?"</small>
+            </div>
+          )}
+
           {messages.map((m, i) => (
-            <div key={i} className={`msg ${m.role === "user" ? "me" : "bot"}`}>
-              {m.content}
+            <div key={i} className={`message-row ${m.role}`}>
+              <div className="bubble">
+                {m.content}
+                
+                {/* Tampilkan Info Source (Hanya untuk Bot) */}
+                {m.role === "assistant" && m.meta?.source && (
+                  <div className="meta-info">
+                    <span className={`badge ${m.meta.source}`}>
+                      {m.meta.source.toUpperCase()}
+                    </span>
+                    {m.meta.source === 'cache' && m.meta.similarity && (
+                      <span style={{marginLeft: "5px", color: "#666"}}>
+                        (Akurasi: {m.meta.similarity.toFixed(4)})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
-          {messages.length === 0 && (
-            <div className="badge">
-              Mulai tanya: &quot;Apa itu GCP?&quot;, &quot;Huawei Cloud itu apa?&quot;, atau
-              &quot;Bedanya object storage vs block storage?&quot;
+
+          {loading && (
+            <div className="message-row assistant">
+              <div className="bubble" style={{color: "#888"}}>
+                <em>Sedang mengetik...</em>
+              </div>
             </div>
           )}
-          {loading && <div className="msg bot">Sedang menyusun jawaban…</div>}
         </div>
 
-        <div className="footer">
+        {/* FOOTER INPUT */}
+        <div className="chat-footer">
           <input
-            className="input"
-            placeholder={placeholder}
+            className="chat-input"
+            placeholder="Ketik pesan Anda..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
+            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             disabled={loading}
             autoFocus
-            style={{ flex: 1 }}
           />
-          <button className="button" onClick={sendMessage} disabled={loading}>
-            {loading ? "Mengirim…" : "Kirim"}
+          <button className="send-btn" onClick={sendMessage} disabled={loading || !input}>
+            ➤
           </button>
         </div>
+
       </div>
     </div>
   );

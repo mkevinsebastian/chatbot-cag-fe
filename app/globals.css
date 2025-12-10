@@ -1,128 +1,180 @@
-:root {
-  color-scheme: light;
-}
-
+/* Reset dasar */
 * {
   box-sizing: border-box;
 }
 
-html,
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
-}
-
-body {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #f5f7fb;
-}
-
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 24px;
-}
-
-.card {
-  background: white;
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
-  padding: 16px;
-}
-
-.row {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f0f2f5; /* Warna background abu muda */
+  height: 100vh;
   display: flex;
-  gap: 12px;
+  justify-content: center;
   align-items: center;
 }
 
-.select,
-.input {
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+/* Container Utama */
+.main-container {
+  width: 100%;
+  max-width: 500px; /* Lebar maksimal seperti HP/Widget */
+  height: 90vh;
+  padding: 10px;
+}
+
+.chat-card {
   background: white;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Supaya isi tidak keluar dari radius */
 }
 
-.select:focus,
-.input:focus {
-  outline: none;
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 4px rgba(147, 197, 253, .3);
-}
-
-.button {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 0;
-  background: #2563eb;
+/* Header */
+.chat-header {
+  background-color: #008069; /* Warna Hijau WA */
   color: white;
-  cursor: pointer;
+  padding: 15px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-.button:disabled {
-  opacity: .6;
-  cursor: not-allowed;
+.chat-header h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
 }
 
-.chat {
+.chat-header p {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* Area Chat (Tengah) */
+.chat-body {
+  flex: 1;
+  background-color: #efeae2; /* Background krem ala WA */
+  padding: 20px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: 60vh;
-  overflow: auto;
-  padding: 12px;
 }
 
-.msg {
-  max-width: 70%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  white-space: pre-wrap;
-}
-
-.me {
-  align-self: flex-end;
-  background: #2563eb;
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-.bot {
-  align-self: flex-start;
-  background: #eef2ff;
-  color: #111827;
-  border-bottom-left-radius: 4px;
-}
-
-.footer {
+/* Pesan (Bubble) */
+.message-row {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  width: 100%;
+}
+
+.message-row.user {
+  justify-content: flex-end; /* Pesan user di kanan */
+}
+
+.message-row.assistant {
+  justify-content: flex-start; /* Pesan bot di kiri */
+}
+
+.bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  word-wrap: break-word;
+}
+
+/* Warna Bubble User */
+.message-row.user .bubble {
+  background-color: #d9fdd3; /* Hijau muda */
+  color: #111b21;
+  border-top-right-radius: 0; /* Sudut lancip */
+}
+
+/* Warna Bubble Bot */
+.message-row.assistant .bubble {
+  background-color: #ffffff; /* Putih */
+  color: #111b21;
+  border-top-left-radius: 0; /* Sudut lancip */
+}
+
+/* Metadata (Source: Cache/LLM) */
+.meta-info {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  text-align: right;
+  padding-top: 4px;
+  border-top: 1px solid rgba(0,0,0,0.05);
 }
 
 .badge {
-  font-size: 12px;
-  color: #6b7280;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
 }
 
-.header {
+.badge.cache { color: #198754; background: #e8f5e9; } /* Hijau */
+.badge.llm { color: #6f42c1; background: #f3e5f5; }   /* Ungu */
+
+/* Input Area (Bawah) */
+.chat-footer {
+  background-color: #f0f2f5;
+  padding: 10px 15px;
   display: flex;
-  justify-content: space-between;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 12px;
 }
 
-.title {
-  font-weight: 700;
-  font-size: 20px;
+.chat-input {
+  flex: 1;
+  padding: 12px 15px;
+  border-radius: 24px;
+  border: 1px solid #ddd;
+  outline: none;
+  font-size: 14px;
 }
 
-/* optional badge styling tweak */
-.header .badge {
-  background: #f1f5ff;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
+.chat-input:focus {
+  border-color: #008069;
+}
+
+.send-btn {
+  background-color: #008069;
+  color: white;
+  border: none;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: background 0.2s;
+}
+
+.send-btn:hover {
+  background-color: #006d59;
+}
+
+.send-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Loading Animation */
+.loading {
+  font-style: italic;
+  color: #666;
+  font-size: 12px;
+  margin-left: 10px;
 }
